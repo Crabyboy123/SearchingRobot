@@ -1,0 +1,47 @@
+Some ideas on how implementation, feel free to add
+
+// color sensor doc: http://www.ev3dev.org/docs/sensors/lego-ev3-color-sensor/
+
+enum from colors the sensor is able to detect:
+Color
+0	none
+1	black
+2	blue
+3	green
+4	yellow
+5	red
+6	white
+7	brown
+
+while (colorSensor.COL-AMBIENT > 60) {
+	searchForObject();
+}
+
+// do something with different colors
+// add some different actions for different colors 
+if (colorsensor.COL-AMBIENT < 60){
+	color = colorSensor.COL-COLOR  // switch mode to color recognition and get color of object
+	swich (color)
+	case (black)
+		--> continue searchForObject
+	case (blue)
+		-->  continue searchForObject
+	case (green)
+		--> continue  searchForObject
+	case (yellow)
+		-->  continue searchForObject
+	case (red)
+		----> desired object found: do something (go back to starting point, calculate a direct route)
+	case (white)
+		-->  continue searchForObject
+	case (brown)
+		-->  continue searchForObject
+}
+
+
+searchForObject() {
+	while (notFound) {
+		moveForward(20) // I don't know what units this would use, but anyway the idea I had was to go in some pattern and advance to search the whole area
+		turnRight() // do a U-turn and repeat
+	}
+}

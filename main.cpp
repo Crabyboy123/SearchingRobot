@@ -36,11 +36,12 @@ public:
      * @param int way, can be CLOSE or OPEN
      */
     void moveTheArm(int way){
-        arm_m.set_duty_cycle_sp(way * 30);
-        arm_m.set_time_sp(400);
+        arm_m.reset();
+        arm_m.set_duty_cycle_sp(way * 100);
+        cout << "Rotation: " << arm_m.duty_cycle_sp() << endl;
+        arm_m.set_time_sp(1000);
         arm_m.run_timed();
-        while(arm_m.state().count("running"))
-            this_thread::sleep_for(chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(1600));
 
     }
 
@@ -71,6 +72,8 @@ public:
         right.run_forever();
     }
 
+
+
 };
 
 int main()
@@ -96,7 +99,15 @@ int main()
         cout << *it << endl;*/
     //m3.run_forever();
     SearchingEV3 robot;
-    robot.turn(LEFT,180);
+    //robot.turn(LEFT,180);
+    while(1){
+        if(robot.detectTheColor(GREEN)){
+            robot.moveTheArm(CLOSE);
+            cout << "COLOR FOUND " << endl;
+            break;
+        }
+    }
+    cout << "ENDS" << endl;
     return 0;
 }
 

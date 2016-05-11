@@ -15,7 +15,8 @@ using namespace ev3dev;
 
 #define AREA_LENGTH 20
 
-#define ONE_ANGLE round(1520/180)
+
+#define ONE_ANGLE round(2180/180)
 enum Color{ NONE, BLACK, BLUE, GREEN, YELLOW, RED, WHITE, BROWN };
 class SearchingEV3{
 
@@ -68,16 +69,19 @@ public:
      * @param direction FORWARD/BACKWARD
      */
     void move(int direction){
+        left.reset();
+        right.reset();
         left.set_duty_cycle_sp(direction * 100);
         right.set_duty_cycle_sp(direction * 100);
+        cout << "VALUE: " << left.duty_cycle_sp() << endl;
 
-		left.set_time_sp(1000);
-		right.set_time_sp(1000);
+        left.set_time_sp(1000);
+        right.set_time_sp(1000);
 		left.run_timed();
 		right.run_timed();
 
-        /*left.run_forever();
-        right.run_forever();*/
+        while(right.state().count("running") && left.state().count("running"))
+            this_thread::sleep_for(chrono::milliseconds(10));
     }
 
 	/**
@@ -87,17 +91,17 @@ public:
 	*/
 	void backToOrigin(Color color){
 		for (int i = 0; i < AREA_LENGTH + 1; i++){
-			this.move(BACKWARD);
+            this->move(BACKWARD);
 		}
-		this.turn(LEFT, 90);
+        this->turn(LEFT, 90);
 
 		if (color == RED){
 			for (int i = 0; i < AREA_LENGTH + 1; i++){
-				this.move(BACKWARD);
+                this->move(BACKWARD);
 			}
 		}
 		else{
-			this.move(FORWARD);
+            this->move(FORWARD);
 		}
 	}
 
@@ -107,89 +111,86 @@ public:
 
 		if (y >= position_y){
 			if (orientation == -180){
-				this.turn(LEFT, 180);
+                this->turn(LEFT, 180);
 			}
 			else if (orientation == 90 || orientation == -270){
-				this.turn(RIGHT, 90);
+                this->turn(RIGHT, 90);
 			}
 			else if (orientation == -90 || orientation == 270){
-				this.turn(LEFT, 90);
+                this->turn(LEFT, 90);
 			}
 
 			for (int i = 0; i < y - position_y; i++){
-				this.move(FORWARD);
+                this->move(FORWARD);
 			}
 		}
 		else{
 			up = false;
 			if (orientation == 0){
-				this.turn(LEFT, 180);
+                this->turn(LEFT, 180);
 			}
 			else if (orientation == 90 || orientation == -270){
-				this.turn(LEFT, 90);
+                this->turn(LEFT, 90);
 			}
 			else if (orientation == -90 || orientation == 270){
-				this.turn(RIGHT, 90);
+                this->turn(RIGHT, 90);
 			}
 
 			for (int i = 0; i < position_y - y; i++){
-				this.move(FORWARD);
+                this->move(FORWARD);
 			}
 		}
 
-
 		if (x >= position_x){
 			if (up){
-				this.turn(RIGHT, 90);
+                this->turn(RIGHT, 90);
 			}
 			else{
-				this.turn(LEFT, 90);
+                this->turn(LEFT, 90);
 			}
 
 			for (int i = 0; i < x - position_x; i++){
-				this.move(FORWARD);
+                this->move(FORWARD);
 			}
 		}
 		else{
 			if (up){
-				this.turn(LEFT, 90);
+                this->turn(LEFT, 90);
 			}
 			else{
-				this.turn(RIGHT, 90);
+                this->turn(RIGHT, 90);
 			}
 
 			for (int i = 0; i < position_x - x; i++){
-				this.move(FORWARD);
+                this->move(FORWARD);
 			}
 		}
-
-
 	}
 
 };
 
-int posX, poxY;
+int posX, posY;
 int orientation = 0;
-// orientation : 0 when y++ (up), -180 when y-- (down), {90,-270} x-- (left), {-90, 270} x++ (right) 
 
 int interrupt = 0;
 
-void searchThread(){
+void searchThread(SearchingEV3 *robot){
+    cout << "STARTING MOVING" << endl;
 	while (1){
 		if (interrupt == 0){
 			//search in square area of the size AREA_LENGTH*AREA_LENGTH
 			for (int x = 0; x < AREA_LENGTH; x++){
-				posX = x;
+                posX = x;
 				if (x > 0 && x % 2 != 0){
-					robot.turn(RIGHT, 90);
-					robot.move(FORWARD);
-					robot.turn(RIGHT, 90);
+                    robot->turn(RIGHT, 90);
+                    robot->move(FORWARD);
+                    robot->turn(RIGHT, 90);
 					orientation -= 180;
 				}
 				else if (x > 0 && x % 2 == 0){
-					robot.turn(LEFT, 90);
-					robot.move(FORWARD);
-					robot.turn(LEFT, 90);
+                    robot->turn(LEFT, 90);
+                    robot->move(FORWARD);
+                    robot->turn(LEFT, 90);
 					orientation += 180;
 				}
 
@@ -198,7 +199,7 @@ void searchThread(){
 						break;
 					}
 					posY = y;
-					robot.move(FORWARD);
+                    robot->move(FORWARD);
 				}
 				if (interrupt != 0){
 					break;
@@ -208,10 +209,10 @@ void searchThread(){
 			if (interrupt == 0){
 				// Go back to origin
 				if (AREA_LENGTH % 2 != 0){
-					robot.turn(RIGHT, 180);
+                    robot->turn(RIGHT, 180);
 					orientation -= 180;
 					for (int i = 0; i < AREA_LENGTH; i++){
-						robot.move(FORWARD);
+                        robot->move(FORWARD);
 						posY -= 1;
 						if (interrupt != 0){
 							break;
@@ -219,45 +220,46 @@ void searchThread(){
 					}
 				}
 				if (interrupt == 0){
-					robot.turn(RIGHT, 90);
+                    robot->turn(RIGHT, 90);
 					orientation -= 90;
 					for (int i = 0; i < AREA_LENGTH; i++){
-						robot.move(FORWARD);
+                        robot->move(FORWARD);
 						posX -= 1;
 						if (interrupt != 0){
 							break;
 						}
 					}
 					if (interrupt == 0){
-						robot.turn(RIGHT);
+                        robot->turn(RIGHT, 90);
 						orientation -= 90;
 					}
 				}
 			}
 		}
-		std::cout << interupt << std::endl;
+        std::cout << interrupt << std::endl;
 	}
 }
 
-void findAndBringThread(){
+void findAndBringThread(SearchingEV3 *robot){
+    cout << "STARTING FINDING" << endl;
 	while (1){
-		if (robot.detectTheColor(RED)){
+        if (robot->detectTheColor(RED)){
 			interrupt = 1;
-			robot.moveTheArm(CLOSE);
-			robot.goToPoint(AREA_LENGTH, AREA_LENGTH, posX, posY, orientation);
-			robot.moveTheArm(OPEN);
-			robot.backToOrigin(RED);
+            robot->moveTheArm(CLOSE);
+            robot->goToPoint(AREA_LENGTH, AREA_LENGTH, posX, posY, orientation);
+            robot->moveTheArm(OPEN);
+            robot->backToOrigin(RED);
 			orientation = 0;
 			posX = 0;
 			posY = 0;
 			interrupt = 0;
 		}
-		else if (robot.detectTheColor(GREEN)){
+        else if (robot->detectTheColor(GREEN)){
 			interrupt = 1;
-			robot.moveTheArm(CLOSE);
-			robot.goToPoint(AREA_LENGTH, -1, posX, posY, orientation);
-			robot.moveTheArm(OPEN);
-			robot.backToOrigin(GREEN);
+            robot->moveTheArm(CLOSE);
+            robot->goToPoint(AREA_LENGTH, -1, posX, posY, orientation);
+            robot->moveTheArm(OPEN);
+            robot->backToOrigin(GREEN);
 			orientation = 0;
 			posX = 0;
 			posY = 0;
@@ -268,45 +270,31 @@ void findAndBringThread(){
 
 int main()
 {
-    /*motor m1(OUTPUT_B);
-    motor m2(OUTPUT_C);
-    m1.set_duty_cycle_sp(100);*/
-    //m2.set_duty_cycle_sp(100);
-    //m1.set_time_sp(10000).run_timed();
-    //m2.set_time_sp(10000).run_timed();
-    //motor m3(OUTPUT_A);
-    //m3.set_duty_cycle_sp(30);
-    //color_sensor s(INPUT_1);
-    //m3.set_time_sp(400);
-    /*m3.run_timed();
-    while(m3.state().count("running"))
-        this_thread::sleep_for(chrono::milliseconds(10));
-    m3.set_duty_cycle_sp(-30);
-    m3.set_time_sp(400);
-    m3.run_timed();*/
-    //mode_set comm = m3.commands();
-    /*for(auto it = comm.begin(); it != comm.end() ; ++it)
-        cout << *it << endl;*/
-    //m3.run_forever();
+
     SearchingEV3 robot;
-    //robot.turn(LEFT,180);
-    /*while(1){
-        if(robot.detectTheColor(GREEN)){
-            robot.moveTheArm(CLOSE);
-            cout << "COLOR FOUND " << endl;
-            break;
-        }
-    }
-    cout << "ENDS" << endl;*/
-
 	//search thread, needs to be interrupted by colorfound
-	
-	std::thread search (searchThread);
-	std::thread find (findAndBringThread);
+    cout << "THREAD DEFINITION" << endl;
+    //robot.turn(LEFT, 360);
+    //std::thread search (searchThread, &robot);
+    //std::thread find (findAndBringThread, &robot);
 
-	search.join();
-	find.join();
+    cout << "THREAHD JOIN" << endl;
+    //search.join();
+    //find.join();
 
+    cout << "MOVING FRONT" << endl;
+    robot.move(FORWARD);
+    cout << "MOVING BACK" << endl;
+    robot.move(BACKWARD);
+    cout << "MOVING FRONT" << endl;
+    robot.move(FORWARD);
+    /*robot.turn(RIGHT, 90);
+    robot.move(FORWARD);
+    robot.turn(RIGHT, 90);
+    robot.move(FORWARD);
+    robot.turn(RIGHT, 90);
+    robot.move(FORWARD);
+    robot.turn(RIGHT, 90);*/
     return 0;
 }
 

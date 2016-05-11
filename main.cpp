@@ -7,16 +7,17 @@
 using namespace std;
 using namespace ev3dev;
 #define LEFT 1
-#define RIGHT -1
+#define RIGq4HT -1
 #define FORWARD 1
 #define BACKWARD -1
 #define OPEN 1
 #define CLOSE -1
 
-#define AREA_LENGTH 20
+#define AREA_LENGTH 10
 
-
-#define ONE_ANGLE round(2180/180)
+//2180
+#define ONE_ANGLE round(2670/180)
+int orientation = 0;
 enum Color{ NONE, BLACK, BLUE, GREEN, YELLOW, RED, WHITE, BROWN };
 class SearchingEV3{
 
@@ -41,10 +42,10 @@ public:
     void moveTheArm(int way){
         arm_m.reset();
         arm_m.set_duty_cycle_sp(way * 100);
-        cout << "Rotation: " << arm_m.duty_cycle_sp() << endl;
-        arm_m.set_time_sp(1000);
+        //cout << "Rotation: " << arm_m.duty_cycle_sp() << endl;
+        arm_m.set_time_sp(700);
         arm_m.run_timed();
-        this_thread::sleep_for(chrono::milliseconds(1600));
+        this_thread::sleep_for(chrono::milliseconds(800));
 
     }
 
@@ -54,14 +55,16 @@ public:
      * @param angle <0,360)
      */
     void turn(int side, int angle){
-        left.set_duty_cycle_sp(side*(-100));
-        right.set_duty_cycle_sp(side*100);
+        left.set_duty_cycle_sp(side*(-50));
+        right.set_duty_cycle_sp(side*50);
+         int time = ONE_ANGLE * angle;
+        //cout << "TURN: " << left.duty_cycle_sp() << endl;
+
         left.set_time_sp(ONE_ANGLE * angle);
         right.set_time_sp(ONE_ANGLE * angle);
         left.run_timed();
         right.run_timed();
-        while(right.state().count("running"))
-            this_thread::sleep_for(chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(time));
     }
 
     /**
@@ -71,17 +74,16 @@ public:
     void move(int direction){
         left.reset();
         right.reset();
-        left.set_duty_cycle_sp(direction * 100);
-        right.set_duty_cycle_sp(direction * 100);
-        cout << "VALUE: " << left.duty_cycle_sp() << endl;
+        left.set_duty_cycle_sp(direction * 80);
+        right.set_duty_cycle_sp(direction * 80);
+        //cout << "VALUE: " << left.duty_cycle_sp() << endl;
 
-        left.set_time_sp(1000);
-        right.set_time_sp(1000);
+        left.set_time_sp(400);
+        right.set_time_sp(400);
 		left.run_timed();
 		right.run_timed();
 
-        while(right.state().count("running") && left.state().count("running"))
-            this_thread::sleep_for(chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(400));
     }
 
 	/**
@@ -90,65 +92,78 @@ public:
 	* @param color from enum Color
 	*/
 	void backToOrigin(Color color){
-		for (int i = 0; i < AREA_LENGTH + 1; i++){
+        for (int i = 0; i < AREA_LENGTH + 2; i++){
             this->move(BACKWARD);
 		}
         this->turn(LEFT, 90);
-
+        sleep(1);
 		if (color == RED){
-			for (int i = 0; i < AREA_LENGTH + 1; i++){
+            for (int i = 0; i < AREA_LENGTH + 2; i++){
                 this->move(BACKWARD);
 			}
 		}
 		else{
             this->move(FORWARD);
+            this->move(FORWARD);
 		}
 	}
 
-	void goToPoint(int x, int y, int position_x, int position_y, int orientation){
+    void goToPoint(int x, int y, int position_x, int position_y){
 
 		bool up = true;
-
 		if (y >= position_y){
 			if (orientation == -180){
-                this->turn(LEFT, 180);
-			}
+                //this->turn(LEFT, 180);
+                   this->turn(LEFT,90);
+                    sleep(1);
+                    this->turn(LEFT, 90);
+            }
 			else if (orientation == 90 || orientation == -270){
                 this->turn(RIGHT, 90);
+
 			}
 			else if (orientation == -90 || orientation == 270){
                 this->turn(LEFT, 90);
 			}
-
+            if(orientation)
+                sleep(1);
 			for (int i = 0; i < y - position_y; i++){
                 this->move(FORWARD);
 			}
+            orientation = 0;
 		}
 		else{
 			up = false;
 			if (orientation == 0){
-                this->turn(LEFT, 180);
-			}
+                //this->turn(LEFT, 180);
+                this->turn(LEFT,90);
+                 sleep(1);
+                 this->turn(LEFT, 90);
+            }
 			else if (orientation == 90 || orientation == -270){
                 this->turn(LEFT, 90);
 			}
 			else if (orientation == -90 || orientation == 270){
                 this->turn(RIGHT, 90);
 			}
-
+            if(orientation)
+                sleep(1);
 			for (int i = 0; i < position_y - y; i++){
                 this->move(FORWARD);
 			}
+            orientation = -180;
 		}
 
 		if (x >= position_x){
 			if (up){
                 this->turn(RIGHT, 90);
+                orientation -= 90;
 			}
 			else{
                 this->turn(LEFT, 90);
+                orientation += 90;
 			}
-
+            sleep(1);
 			for (int i = 0; i < x - position_x; i++){
                 this->move(FORWARD);
 			}
@@ -156,11 +171,13 @@ public:
 		else{
 			if (up){
                 this->turn(LEFT, 90);
+                orientation += 90;
 			}
 			else{
                 this->turn(RIGHT, 90);
+                orientation -= 90;
 			}
-
+            sleep(1);
 			for (int i = 0; i < position_x - x; i++){
                 this->move(FORWARD);
 			}
@@ -170,7 +187,7 @@ public:
 };
 
 int posX, posY;
-int orientation = 0;
+//int orientation = 0;
 
 int interrupt = 0;
 
@@ -183,15 +200,21 @@ void searchThread(SearchingEV3 *robot){
                 posX = x;
 				if (x > 0 && x % 2 != 0){
                     robot->turn(RIGHT, 90);
+                    sleep(1);
                     robot->move(FORWARD);
+                    sleep(1);
                     robot->turn(RIGHT, 90);
+                    sleep(1);
 					orientation -= 180;
 				}
 				else if (x > 0 && x % 2 == 0){
                     robot->turn(LEFT, 90);
+                    sleep(1);
                     robot->move(FORWARD);
+                    sleep(1);
                     robot->turn(LEFT, 90);
-					orientation += 180;
+                    sleep(1);
+                    orientation += 180;
 				}
 
 				for (int y = 0; y < AREA_LENGTH; y++){
@@ -239,15 +262,20 @@ void searchThread(SearchingEV3 *robot){
         std::cout << interrupt << std::endl;
 	}
 }
-
+/**
+ * @brief findAndBringThread, Thread maintains the process of analyzing color of the object
+ * @param robot, robot class
+ */
 void findAndBringThread(SearchingEV3 *robot){
     cout << "STARTING FINDING" << endl;
 	while (1){
         if (robot->detectTheColor(RED)){
 			interrupt = 1;
             robot->moveTheArm(CLOSE);
-            robot->goToPoint(AREA_LENGTH, AREA_LENGTH, posX, posY, orientation);
+            robot->goToPoint(AREA_LENGTH+1, AREA_LENGTH+1, posX, posY);
             robot->moveTheArm(OPEN);
+            //robot->goToPoint(posX, posY, AREA_LENGTH, AREA_LENGTH);
+            sleep(3);
             robot->backToOrigin(RED);
 			orientation = 0;
 			posX = 0;
@@ -257,7 +285,7 @@ void findAndBringThread(SearchingEV3 *robot){
         else if (robot->detectTheColor(GREEN)){
 			interrupt = 1;
             robot->moveTheArm(CLOSE);
-            robot->goToPoint(AREA_LENGTH, -1, posX, posY, orientation);
+            robot->goToPoint(AREA_LENGTH, -1, posX, posY);
             robot->moveTheArm(OPEN);
             robot->backToOrigin(GREEN);
 			orientation = 0;
@@ -273,28 +301,12 @@ int main()
 
     SearchingEV3 robot;
 	//search thread, needs to be interrupted by colorfound
-    cout << "THREAD DEFINITION" << endl;
-    //robot.turn(LEFT, 360);
-    //std::thread search (searchThread, &robot);
-    //std::thread find (findAndBringThread, &robot);
+    std::thread search (searchThread, &robot);
+    std::thread find (findAndBringThread, &robot);
 
-    cout << "THREAHD JOIN" << endl;
-    //search.join();
-    //find.join();
+    search.join();
+    find.join();
 
-    cout << "MOVING FRONT" << endl;
-    robot.move(FORWARD);
-    cout << "MOVING BACK" << endl;
-    robot.move(BACKWARD);
-    cout << "MOVING FRONT" << endl;
-    robot.move(FORWARD);
-    /*robot.turn(RIGHT, 90);
-    robot.move(FORWARD);
-    robot.turn(RIGHT, 90);
-    robot.move(FORWARD);
-    robot.turn(RIGHT, 90);
-    robot.move(FORWARD);
-    robot.turn(RIGHT, 90);*/
     return 0;
 }
 
